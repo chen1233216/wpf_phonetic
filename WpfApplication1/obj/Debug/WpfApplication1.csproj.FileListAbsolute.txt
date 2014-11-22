@@ -15,3 +15,7 @@ D:\Project\VS\WpfApplication1\WpfApplication1\bin\Debug\WpfApplication1.exe.mani
 D:\Project\VS\WpfApplication1\WpfApplication1\bin\Debug\WpfApplication1.application
 D:\Project\VS\WpfApplication1\WpfApplication1\obj\Debug\WpfApplication1.exe.manifest
 D:\Project\VS\WpfApplication1\WpfApplication1\obj\Debug\WpfApplication1.application
+D:\Project\git\wpf_phonetic\WpfApplication1\bin\Debug\WpfApplication1.exe.config
+D:\Project\git\wpf_phonetic\WpfApplication1\obj\Debug\WpfApplication1.csproj.ResolveComReference.cache
+D:\Project\git\wpf_phonetic\WpfApplication1\obj\Debug\WpfApplication1.exe
+D:\Project\git\wpf_phonetic\WpfApplication1\obj\Debug\WpfApplication1.pdb
