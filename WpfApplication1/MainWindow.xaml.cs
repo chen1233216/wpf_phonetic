@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define _Debug_Show_
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -28,6 +29,9 @@ using System.Text.RegularExpressions;
 //thread
 using System.Threading;
 
+//HtmlAgilityPack
+using HtmlAgilityPack;
+
 namespace WpfApplication1
 {
     /// <summary>
@@ -45,6 +49,8 @@ namespace WpfApplication1
         private bool no_errors = true;
         private string cur_file;
 
+        //tags
+        private string web_site = "http://www.iciba.com";
 
         #region　-　插入分页符　-
         public void InsertBreak()
@@ -164,6 +170,143 @@ namespace WpfApplication1
 
         }
 
+        private List<String> get_Tag(string word)
+        {
+            List<String> tags = new List<string>();
+
+            HtmlWeb htmlWeb = new HtmlWeb();
+            string url = this.web_site + "/" + word;
+            HtmlAgilityPack.HtmlDocument document = htmlWeb.Load(url);
+            HtmlNode someNode = document.GetElementbyId("dict_main");
+            IEnumerable<HtmlNode> allLinks = someNode.Descendants("a");
+            foreach (HtmlNode link in allLinks)
+            {
+                // Checks whether the link contains an HREF attribute
+                if (link.Attributes.Contains("title"))
+                {
+                    //this.the_http.AppendText(link.Attributes["title"].Value+"\n");
+                    //// Simple check: if the href begins with "http://", prints it out
+                    if (link.Attributes["title"].Value.Equals("查询词条属于此分类"))
+                    {
+                        //this.the_http.AppendText(link.InnerText + "\n");
+                        tags.Add(link.InnerText);
+                    }
+                }
+            }
+
+            return tags;
+
+        }
+
+
+        private void everyParagraph_tags(Word.Document doc)
+        {
+            object missing = Type.Missing;
+
+
+            //遍历每一段
+            for (int i = 1; i <= doc.Paragraphs.Count; i++)
+            {
+#if _Debug_Show_
+                doc.Paragraphs[i].Range.Select();
+                MessageBox.Show("p: " + i);
+#endif
+                //先寻找'/'
+                Word.Range rng = doc.Paragraphs[i].Range;   //获取范围
+                String lineText = doc.Paragraphs[i].Range.Text; //记录该行内容
+                //在范围中搜索“/”
+                rng.Find.ClearFormatting();
+                rng.Find.Forward = true;
+                rng.Find.Text = "[";
+                rng.Find.Execute(
+                     ref missing, ref missing, ref missing, ref missing, ref missing,
+                     ref missing, ref missing, ref missing, ref missing, ref missing,
+                     ref missing, ref missing, ref missing, ref missing, ref missing);
+#if _Debug_Show_
+                Word.Range debugRange = doc.Content;//为了方便debug所设置的范围变量，用来在debug时显示当先所选中的区域
+#endif
+
+                if (rng.Find.Found)//该行需要处理
+                {
+                    //找到“/”位置，并记录位置
+                    object start1 = rng.Start;
+                    object end1 = rng.End;
+#if _Debug_Show_
+                    debugRange.SetRange((int)start1, (int)end1);
+                    debugRange.Select();
+                    MessageBox.Show("Start1: " + start1 + " End1: " + end1, "Range Information : ");
+#endif
+                    //第二次执行搜索
+                    rng.Find.Text = "]";
+                    rng.SetRange((int)end1, doc.Paragraphs[i].Range.End);
+                    rng.Find.Execute(
+                         ref missing, ref missing, ref missing, ref missing, ref missing,
+                         ref missing, ref missing, ref missing, ref missing, ref missing,
+                         ref missing, ref missing, ref missing, ref missing, ref missing);
+                    if (!rng.Find.Found)
+                    {
+                        //MessageBox.Show(@"error : second / not found.");
+                        this.addRrror(@" second / not found : " + lineText);
+                        continue;
+                    }
+                    //记录第二次搜索结果
+                    object start2 = rng.Start;
+                    object end2 = rng.End;
+#if _Debug_Show_
+                    debugRange.SetRange((int)start2, (int)end2);
+                    debugRange.Select();
+                    MessageBox.Show("Start2: " + start2 + " End2: " + end2, "Range Information : ");
+#endif
+                    //解析字符串lineText,获取需要注音的单词组
+                    String[] str = lineText.Split('[');//先去掉音标及其之后的部分
+                    String[] words = new String[10]; int wordCount = 0;
+                    String wordPhons = "";
+                    if (str == null || str.Length < 1)
+                    {
+                        //MessageBox.Show("Error", "Range Information : ");
+                        this.addRrror(" : format error." + lineText);
+                        continue;
+                    }
+                    Regex r = new Regex("([a-zA-Z]+)");//用来解析的正则
+                    if (r.IsMatch(str[0]))
+                    {
+                        //首次匹配 
+                        Match m = r.Match(str[0]);
+                        while (m.Success && wordCount < 10)
+                        {
+                            words[wordCount++] = m.Value;
+                            //下一个匹配 
+                            m = m.NextMatch();
+                        }
+                    }
+
+                    //获取第一个单词的分级
+                    if (wordCount < 1)
+                        continue;
+                    try
+                    {
+                        List<String> tags = get_Tag(words[0]);
+                        if (tags.Count < 1)
+                            continue;
+                        object pBreak = (int)Word.WdBreakType.wdLineBreak;
+                        rng.SetRange(doc.Paragraphs[i].Range.End - 1, doc.Paragraphs[i].Range.End - 1);
+                        
+                        string tag_text = "";
+                        foreach (String tag in tags)
+                        {
+                            tag_text += "\t" + tag;
+                        }
+                        Clipboard.SetText(tag_text, TextDataFormat.UnicodeText);
+                        rng.Paste();
+
+                    }catch(Exception ee){
+                        MessageBox.Show(ee.ToString());
+
+                    }
+
+                }
+            }
+        }
 
         //一段一段选中
         private void everyParagraph(Word.Document doc)
@@ -411,7 +554,7 @@ namespace WpfApplication1
             }
         }
 
-        private void pbTag_click(object sender, RoutedEventArgs e)
+        private void test_post()
         {
             // 待请求的地址
             string url = "http://www.iciba.com/apple";
@@ -438,7 +581,7 @@ namespace WpfApplication1
             request.CookieContainer.Add(requestCookie);
 
             // 输入 POST 的数据.
-            string inputData =  "apple";
+            string inputData = "apple";
 
 
             // 拼接成请求参数串，并进行编码，成为字节
@@ -473,7 +616,7 @@ namespace WpfApplication1
 
 
             // 首先得到回应的头部，可以知道返回内容的长度或者类型
-            MessageBox.Show("Content length is "+response.ContentLength+"\n");
+            MessageBox.Show("Content length is " + response.ContentLength + "\n");
             MessageBox.Show("Content type is " + response.ContentType + "\n");
 
 
@@ -500,6 +643,16 @@ namespace WpfApplication1
             // 完成后要关闭字符流，字符流底层的字节流将会自动关闭
             response.Close();
             readStream.Close();
+
+        }
+
+        private void pbTag_click(object sender, RoutedEventArgs e)
+        {
+            Word.Application theApplication = new Word.Application();
+            theApplication.Visible = true;
+
+            doc = theApplication.Documents.Open(@"D:/temp.docx");//打开word文档
+            everyParagraph_tags(doc);
         }
 
     }
