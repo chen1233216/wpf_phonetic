@@ -410,6 +410,98 @@ namespace WpfApplication1
                 MessageBox.Show("Exception.!!! " + ee.ToString(), "Some Exception ! ");
             }
         }
+
+        private void pbTag_click(object sender, RoutedEventArgs e)
+        {
+            // 待请求的地址
+            string url = "http://www.iciba.com/apple";
+
+
+            // 创建 WebRequest 对象，WebRequest 是抽象类，定义了请求的规定,
+            // 可以用于各种请求，例如：Http, Ftp 等等。
+            // HttpWebRequest 是 WebRequest 的派生类，专门用于 Http
+            System.Net.HttpWebRequest request
+                = System.Net.HttpWebRequest.Create(url) as System.Net.HttpWebRequest;
+
+
+            // 请求的方式通过 Method 属性设置 ，默认为 GET
+            // 可以将 Method 属性设置为任何 HTTP 1.1 协议谓词：GET、HEAD、POST、PUT、DELETE、TRACE 或 OPTIONS。
+            request.Method = "POST";
+
+
+            // 还可以在请求中附带 Cookie
+            // 但是，必须首先创建 Cookie 容器
+            request.CookieContainer = new System.Net.CookieContainer();
+
+            System.Net.Cookie requestCookie
+                = new System.Net.Cookie("Request", "RequestValue", "/", "localhost");
+            request.CookieContainer.Add(requestCookie);
+
+            // 输入 POST 的数据.
+            string inputData =  "apple";
+
+
+            // 拼接成请求参数串，并进行编码，成为字节
+            string postData = inputData;
+            ASCIIEncoding encoding = new ASCIIEncoding();
+            byte[] byte1 = encoding.GetBytes(postData);
+
+
+            // 设置请求的参数形式
+            request.ContentType = "application/x-www-form-urlencoded";
+
+
+            // 设置请求参数的长度.
+            request.ContentLength = byte1.Length;
+
+
+            // 取得发向服务器的流
+            System.IO.Stream newStream = request.GetRequestStream();
+
+
+            // 使用 POST 方法请求的时候，实际的参数通过请求的 Body 部分以流的形式传送
+            newStream.Write(byte1, 0, byte1.Length);
+
+
+            // 完成后，关闭请求流.
+            newStream.Close();
+
+
+            // GetResponse 方法才真的发送请求，等待服务器返回
+            System.Net.HttpWebResponse response
+                = (System.Net.HttpWebResponse)request.GetResponse();
+
+
+            // 首先得到回应的头部，可以知道返回内容的长度或者类型
+            MessageBox.Show("Content length is "+response.ContentLength+"\n");
+            MessageBox.Show("Content type is " + response.ContentType + "\n");
+
+
+            // 回应的 Cookie 在 Cookie 容器中
+            foreach (System.Net.Cookie cookie in response.Cookies)
+            {
+                //MessageBox.Show("Name: " + cookie.Name + " Value: " + cookie.Value + "\n");
+            }
+
+            // 然后可以得到以流的形式表示的回应内容
+            System.IO.Stream receiveStream
+                = response.GetResponseStream();
+
+
+            // 还可以将字节流包装为高级的字符流，以便于读取文本内容
+            // 需要注意编码
+            System.IO.StreamReader readStream
+                = new System.IO.StreamReader(receiveStream, Encoding.UTF8);
+
+            //MessageBox.Show("Response stream received.\n"+readStream.ReadToEnd());
+            the_http.AppendText(readStream.ReadToEnd());
+
+
+            // 完成后要关闭字符流，字符流底层的字节流将会自动关闭
+            response.Close();
+            readStream.Close();
+        }
+
     }
 
     //该类负责将单词的音标转换成Kingsoft Phonetic Plain字体所用的编码
